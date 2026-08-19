@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aiko TV — why Dart reaches the TV and Python doesn't</title>
+<style>
+  :root{
+    --bg:#0a0e17; --card:#0e1420; --hair:#1e293b; --ink:#e6ecf5; --muted:#7c89a3;
+    --gold:#e8b34a; --cyan:#4fd1c5; --rose:#f2789b;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+    padding:2rem 1.25rem 5rem; line-height:1.6;
+    background-image:radial-gradient(circle at 50% 0%, #101827 0%, #0a0e17 55%);}
+  .wrap{max-width:46rem; margin:0 auto}
+  .ey{font-family:var(--mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin:0 0 .6rem}
+  h1{font-size:2rem; letter-spacing:-.02em; margin:0 0 .6rem; font-weight:720; line-height:1.2}
+  h1 b{color:var(--gold); font-weight:720}
+  .sub{color:var(--muted); margin:0 0 2.5rem; font-size:1.05rem}
+  h2{font-size:1.25rem; margin:2.75rem 0 .75rem; font-weight:680; letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono); font-size:.8rem; color:var(--cyan); margin-right:.5rem}
+  h3{font-size:1rem; margin:1.75rem 0 .5rem; font-weight:660; color:var(--cyan)}
+  p{margin:0 0 1rem}
+  code{font-family:var(--mono); font-size:.86em; background:#111b2b; border:1px solid var(--hair);
+    border-radius:5px; padding:.1em .35em}
+  .lede{border-left:2px solid var(--gold); padding:.15rem 0 .15rem 1.1rem; margin:0 0 1.5rem; color:var(--ink)}
+  .card{background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:1.15rem 1.35rem; margin:1.25rem 0}
+  .card .h{font-weight:680; margin-bottom:.4rem; display:flex; align-items:center; gap:.55rem}
+  .card p:last-child{margin-bottom:0}
+  .tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase;
+    border-radius:5px; padding:.15em .45em; margin-left:auto}
+  .tag.go{color:var(--cyan); border:1px solid var(--cyan)}
+  .tag.no{color:var(--rose); border:1px solid var(--rose)}
+  .scroll{overflow-x:auto; margin:1.25rem 0}
+  table{border-collapse:collapse; width:100%; min-width:34rem; font-size:.92rem}
+  th,td{text-align:left; padding:.6rem .8rem; border-bottom:1px solid var(--hair); vertical-align:top}
+  th{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:400}
+  td:first-child{color:var(--muted)}
+  ul{margin:0 0 1rem; padding-left:1.15rem}
+  li{margin-bottom:.4rem}
+  .foot{margin-top:3.5rem; padding-top:1.25rem; border-top:1px solid var(--hair);
+    font-family:var(--mono); font-size:.72rem; color:#4d5573}
+  .foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="ey">Aiko TV · platform analysis</p>
+  <h1>Why Dart reaches the TV and <b>Python doesn't</b></h1>
+  <p class="sub">The instinct is to ask whether a Smart TV can run Python. That's the wrong question — and the right one tells you exactly what doing it anyway would cost.</p>
+
+  <p class="lede">The TV doesn't run Dart. It runs <b>machine code</b> (Tizen) or <b>JavaScript</b> (webOS). Dart's advantage isn't that it's a permitted language — it's that it has a downhill compile path to both, and someone already built the bridge.</p>
+
+  <h2><span class="n">01</span>Tizen — Dart becomes a native binary</h2>
+
+  <p><code>flutter-tizen</code> does not ship a Dart interpreter to the TV. Dart is AOT-compiled to ARM machine code ahead of time, and what goes into the <code>.tpk</code> is a native Tizen app. The only runtime riding along is a small GC and snapshot loader linked into that binary.</p>
+
+  <p>Python has no equivalent move. CPython is an interpreter by construction: it needs <code>libpython</code>, the standard library present as importable files, and dynamic module loading <em>at runtime</em>. There is no <code>dart compile aot</code> analogue that turns a Python package into a self-contained ARM binary.</p>
+
+  <div class="card">
+    <div class="h">🧩 The first-order reason is the embedder <span class="tag no">no port exists</span></div>
+    <p>Tizen's supported app models are Web, .NET, and Native C/C++. <b>Flutter isn't on that list either.</b> <code>flutter-tizen</code> exists because Samsung wrote a native C++ Tizen app that <em>hosts</em> the Flutter engine — creating the Evas/EFL surface, pumping input, wiring the app lifecycle.</p>
+    <p>Nobody has written "CPython embedded in a native Tizen app." That's the actual asymmetry: not language permissions, but whose porting work already exists. Everything else is downstream of it.</p>
+  </div>
+
+  <p>Underneath the embedder sit the second-order problems, each its own project:</p>
+  <ul>
+    <li><b>C extensions</b> — <code>numpy</code>, <code>pyzmq</code>, <code>Pillow</code>, <code>psutil</code> are compiled <code>.so</code> files. Manylinux wheels won't load; each needs cross-compiling against Tizen's ARM sysroot and libc.</li>
+    <li><b>Confinement</b> — Tizen apps are signed and run under SMACK, so what you can <code>exec</code> from a dropped-in binary is constrained.</li>
+    <li><b>Size</b> — interpreter plus stdlib is tens of megabytes before any application code.</li>
+  </ul>
+
+  <h2><span class="n">02</span>webOS — the language question dissolves</h2>
+
+  <p>Retail LG sets run packaged web apps. The platform executes <b>JavaScript</b>, full stop. Dart reaches that TV only by compiling <em>to</em> JS via <code>dart2js</code> — so it isn't "the TV runs Dart" in any sense; Dart is simply upstream in the toolchain from the thing the TV actually executes.</p>
+
+  <div class="card">
+    <div class="h">💥 The prior on-device finding <span class="tag no">proven, not inferred</span></div>
+    <p><code>downstream-webos</code> was a Flutter Web app until 2026-06-20. Flutter Web <b>crashes the LG C2's webview during engine bootstrap</b> — before any app code executes. A 1.7 MB hello-world crashes identically to the full app, so it isn't bundle size; an isolated CanvasKit probe created a GPU surface and drew to it, and <code>WASM</code> validates true, so it isn't a WebGL/WASM limit. Plain HTML/JS, <code>&lt;video&gt;</code> and <code>fetch</code> all work perfectly.</p>
+    <p>The app is now vanilla HTML/JS with no build step — which is its whole virtue, and the thing any Dart route has to spend.</p>
+  </div>
+
+  <p>That leaves two routes, neither obviously right:</p>
+  <ul>
+    <li><code>dart2js</code> the aiko package into a JS bundle and <code>&lt;script&gt;</code> it in. The codec and dispatcher are pure Dart with no <code>dart:io</code>, so they compile fine — the crash was the Flutter <em>engine</em>, not Dart-compiled JS. Cost: a build step returns.</li>
+    <li>Use <code>mqtt.js</code> over WebSockets and hand-port the S-expression codec to JS, held to the same RFC-0001 vectors the Dart port is pinned to.</li>
+  </ul>
+
+  <h2><span class="n">03</span>The honest caveat: Python isn't impossible on webOS</h2>
+
+  <p>Since <code>WASM</code> validates true on that C2, <b>Pyodide</b> — CPython compiled to WebAssembly — would genuinely load in that webview, and <code>numpy</code> ships in the Pyodide distribution.</p>
+
+  <p>I'd still not do it, and that's a judgement call rather than a capability limit. It's a 10 MB-plus download onto a TV SoC, and Pyodide can't open raw TCP sockets from the browser sandbox anyway — so Aiko's MQTT transport needs rewriting to WebSockets regardless. At which point you've done the hard part of the port and are running a Python-in-WASM stack to avoid writing one codec in JavaScript.</p>
+
+  <h2><span class="n">04</span>What this means for the build</h2>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Question</th><th>Tizen (Samsung)</th><th>webOS (LG)</th></tr></thead>
+    <tbody>
+      <tr><td>Platform executes</td><td>native ARM machine code</td><td>JavaScript (Chromium 120 webview)</td></tr>
+      <tr><td>Embedder exists?</td><td>yes — <code>flutter-tizen</code></td><td>n/a — the webview is the runtime</td></tr>
+      <tr><td>Raw TCP sockets</td><td>yes, full <code>dart:io</code></td><td>no — WebSockets only</td></tr>
+      <tr><td>MQTT client</td><td><code>MqttServerClient</code></td><td><code>MqttBrowserClient</code> or <code>mqtt.js</code></td></tr>
+      <tr><td>Effort for the Dart port</td><td>path dependency, near-unchanged</td><td>codec port or a new build step</td></tr>
+      <tr><td>Python</td><td>no embedder — dead end</td><td>Pyodide loads, but see §03</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card">
+    <div class="h">🛠️ The one thing to fix first <span class="tag go">actionable</span></div>
+    <p><code>aiko_services_dart/lib/src/transport/mqtt_transport.dart:4</code> imports <code>package:mqtt_client/mqtt_server_client.dart</code>, which pulls <code>dart:io</code> and makes the package <b>non-web-compilable</b> as written. Fine for Tizen; fatal for any webOS route. Split it with a conditional import at the transport seam now, while the seam is three files old.</p>
+  </div>
+
+  <p><b>The path of least resistance is Tizen plus the Dart port that already exists</b> — AOT-to-native with a maintained embedder means there is almost nothing to build. Everything else, webOS and Python alike, is a porting project first and an Aiko integration second.</p>
+
+  <p class="foot">
+    Aiko TV · design phase ·
+    <a href="../README.md">README</a> ·
+    <a href="https://nickmeinhold.github.io/aiko_services_dart/">aiko_services_dart docs</a> ·
+    <a href="https://github.com/geekscape/aiko_services">upstream (Python)</a>
+  </p>
+
+</div>
+</body>
+</html>
